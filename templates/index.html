@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificações de Preço de Ativos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* Dark Theme Inspired by Crypto Trading */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1, h2 {
+            color: #f0f6fc;
+            text-align: center;
+            margin: 20px 0;
+        }
+        /* Container Styling */
+        .container {
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        /* Form Styling */
+        form {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            padding: 10px 0;
+            font-size: 16px;
+            color: #8b949e;
+        }
+        input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        /* Main Button Styling */
+        .button {
+            background-color: #238636;
+            color: #ffffff;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #196c2e;
+        }
+        /* Price Update Styling */
+        #priceUpdates {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #priceUpdates li {
+            background: #21262d;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #58a6ff;
+        }
+        /* Buy and Sell Buttons in List Items */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .buy-button, .sell-button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            border: none;
+            color: #ffffff;
+        }
+        .buy-button {
+            background-color: #238636;
+        }
+        .buy-button:hover {
+            background-color: #196c2e;
+        }
+        .sell-button {
+            background-color: #d73a49;
+        }
+        .sell-button:hover {
+            background-color: #c82333;
+        }
+        /* Purchase Messages Styling */
+        #purchaseMessages {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            color: #bdbdbd;
+            margin-top: 20px;
+        }
+        .purchase-message {
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+            font-size: 16px;
+            color: #81c784;
+        }
+        /* Responsive Styling */
+        @media (max-width: 500px) {
+            h1, h2 {
+                font-size: 1.5em;
+            }
+            .container, form, #purchaseMessages {
+                width: 100%;
+                padding: 10px;
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+</head>
+<body>
+    <h1>Notificações de Preço de Ativos</h1>
+    
+    <div class="container">
+        <!-- Subscription Form -->
+        <form id="subscribeForm">
+            <h2>Escolha os Ativos</h2>
+            <label>
+                <input type="checkbox" name="assets" value="btc"> Bitcoin (BTC)
+            </label>
+            <label>
+                <input type="checkbox" name="assets" value="eth"> Ethereum (ETH)
+            </label>
+            <button type="submit" class="button">Inscrever-se</button>
+        </form>
+
+        <!-- Price Updates -->
+        <h2>Atualizações de Preço</h2>
+        <ul id="priceUpdates"></ul>
+
+        <!-- Purchase Messages -->
+        <h2>Mensagens de Compra/Venda</h2>
+        <div id="purchaseMessages"></div>
+    </div>
+
+    <!-- JavaScript to handle socket connections and events -->
+    <script>
+        const socket = io();
+
+        document.getElementById('subscribeForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const selectedAssets = formData.getAll('assets');
+            socket.emit('subscribe', { assets: selectedAssets });
+        });
+
+        socket.on('price_update', function(data) {
+            const listItem = document.createElement('li');
+            listItem.textContent = ` ${data.price}`;
+
+            const actionButtons = document.createElement('div');
+            actionButtons.classList.add('action-buttons');
+
+            const buyButton = document.createElement('button');
+            buyButton.textContent = 'Comprar';
+            buyButton.classList.add('buy-button');
+            buyButton.onclick = function() {
+                socket.emit('buy', { asset: data.asset });
+            };
+
+            const sellButton = document.createElement('button');
+            sellButton.textContent = 'Vender';
+            sellButton.classList.add('sell-button');
+            sellButton.onclick = function() {
+                socket.emit('sell', { asset: data.asset });
+            };
+
+            actionButtons.appendChild(buyButton);
+            actionButtons.appendChild(sellButton);
+            listItem.appendChild(actionButtons);
+
+            document.getElementById('priceUpdates').appendChild(listItem);
+        });
+
+        socket.on('purchase_status', function(data) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('purchase-message');
+            messageElement.textContent = `Transação realizada para o ativo: ${data.asset}`;
+            document.getElementById('purchaseMessages').appendChild(messageElement);
+        });
+    </script>
+</body>
+</html>
